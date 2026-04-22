@@ -28,7 +28,7 @@ async function handler(event) {
         notes: d.notes || undefined,
       })),
     }
-    saveCompany(company)
+    await saveCompany(company)
     return created({ company })
   } catch (err) {
     if (err.status === 400) return badRequest(err.message)

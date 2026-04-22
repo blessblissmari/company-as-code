@@ -24,9 +24,9 @@ async function handler(event) {
   try {
     const id = extractId(event)
     if (!id) return badRequest('company id is required in the path')
-    const company = getCompany(id)
+    const company = await getCompany(id)
     if (!company) return notFound(`No company with id ${id}`)
-    const output = getOutput(id) || null
+    const output = (await getOutput(id)) || null
     return ok({ company, output })
   } catch (err) {
     return serverError('Failed to load company', err.message)

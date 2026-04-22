@@ -13,9 +13,9 @@ const create = require('./handlers/create').handler
 const generate = require('./handlers/generate').handler
 const simulate = require('./handlers/simulate').handler
 const get = require('./handlers/get').handler
-const { preflight, notFound } = require('./lib/response')
+const { preflight, notFound, withRequestOrigin } = require('./lib/response')
 
-async function handler(event, context) {
+async function route(event, context) {
   const method = (event?.httpMethod || 'GET').toUpperCase()
   const path = event?.url || event?.path || '/'
   if (method === 'OPTIONS') return preflight()
@@ -26,6 +26,10 @@ async function handler(event, context) {
   if (method === 'GET' && /^\/company\/[^/]+/.test(path)) return get(event, context)
 
   return notFound(`No route for ${method} ${path}`)
+}
+
+async function handler(event, context) {
+  return withRequestOrigin(event, () => route(event, context))
 }
 
 module.exports = { handler }

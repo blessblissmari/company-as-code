@@ -129,3 +129,67 @@ test('mcp adapter attaches descriptors when MCP_ENABLED=true', () => {
   assert.equal(res.workflows[0].mcp.descriptors[0].owner, 'SDR')
   delete process.env.MCP_ENABLED
 })
+
+test('normalizeLanguage maps supported + locale prefixes, falls back to en', () => {
+  const { normalizeLanguage } = require('../src/lib/i18n')
+  assert.equal(normalizeLanguage('ru'), 'ru')
+  assert.equal(normalizeLanguage('RU'), 'ru')
+  assert.equal(normalizeLanguage('ru-RU'), 'ru')
+  assert.equal(normalizeLanguage('en-US'), 'en')
+  assert.equal(normalizeLanguage(undefined), 'en')
+  assert.equal(normalizeLanguage('fr'), 'en')
+})
+
+test('buildGeneratePrompt embeds the Russian system instruction when language=ru', () => {
+  const { buildGeneratePrompt } = require('../src/lib/prompts')
+  const { system } = buildGeneratePrompt(
+    {
+      name: 'X',
+      industry: 'SaaS',
+      size: '10',
+      goals: 'Grow',
+      strategyStyle: 'product-led',
+      departments: [{ name: 'Sales', type: 'sales', roles: ['AE'] }],
+    },
+    { language: 'ru' },
+  )
+  assert.ok(system.includes('по-русски'))
+})
+
+test('CORS headers reflect CORS_ALLOWED_ORIGINS when request origin matches', () => {
+  const { withRequestOrigin, ok } = require('../src/lib/response')
+  const origHeader = process.env.CORS_ALLOWED_ORIGINS
+  process.env.CORS_ALLOWED_ORIGINS = 'https://company-as-code.pages.dev'
+  try {
+    const allowed = withRequestOrigin(
+      { headers: { origin: 'https://company-as-code.pages.dev' } },
+      () => ok({ ok: true }),
+    )
+    assert.equal(allowed.headers['Access-Control-Allow-Origin'], 'https://company-as-code.pages.dev')
+    assert.equal(allowed.headers.Vary, 'Origin')
+
+    const blocked = withRequestOrigin(
+      { headers: { origin: 'https://evil.example.com' } },
+      () => ok({ ok: true }),
+    )
+    assert.equal(blocked.headers['Access-Control-Allow-Origin'], 'https://company-as-code.pages.dev')
+  } finally {
+    if (origHeader == null) delete process.env.CORS_ALLOWED_ORIGINS
+    else process.env.CORS_ALLOWED_ORIGINS = origHeader
+  }
+})
+
+test('CORS allows any origin when CORS_ALLOWED_ORIGINS is unset', () => {
+  const { withRequestOrigin, ok } = require('../src/lib/response')
+  const orig = process.env.CORS_ALLOWED_ORIGINS
+  delete process.env.CORS_ALLOWED_ORIGINS
+  try {
+    const res = withRequestOrigin(
+      { headers: { origin: 'https://anywhere.example.com' } },
+      () => ok({ ok: true }),
+    )
+    assert.equal(res.headers['Access-Control-Allow-Origin'], '*')
+  } finally {
+    if (orig != null) process.env.CORS_ALLOWED_ORIGINS = orig
+  }
+})

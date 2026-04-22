@@ -4,6 +4,7 @@ const { parseBody, ok, badRequest, notFound, preflight, serverError } = require(
 const { getCompany, getOutput } = require('../lib/storage')
 const { completeJson } = require('../lib/yandexgpt')
 const { buildSimulatePrompt } = require('../lib/prompts')
+const { normalizeLanguage } = require('../lib/i18n')
 
 const SEVERITIES = new Set(['low', 'medium', 'high'])
 
@@ -13,14 +14,16 @@ async function handler(event) {
     const body = parseBody(event)
     const id = body.companyId
     const scenario = String(body.scenario || '').trim()
-    if (!id) return badRequest('companyId is required')
     if (!scenario) return badRequest('scenario is required')
+    const language = normalizeLanguage(body.language)
 
-    const company = getCompany(id)
-    if (!company) return notFound(`No company with id ${id}`)
+    const company = body.company || (id ? await getCompany(id) : null)
+    if (!company) {
+      return id ? notFound(`No company with id ${id}`) : badRequest('company or companyId is required')
+    }
 
-    const previousOutput = getOutput(id)
-    const prompt = buildSimulatePrompt(company, scenario, previousOutput)
+    const previousOutput = body.previousOutput || (company.id ? await getOutput(company.id) : null)
+    const prompt = buildSimulatePrompt(company, scenario, previousOutput, { language })
     const raw = await completeJson({ ...prompt, temperature: 0.5, maxTokens: 1500 })
 
     const result = {
@@ -32,7 +35,7 @@ async function handler(event) {
       })),
       recommendations: (Array.isArray(raw?.recommendations) ? raw.recommendations : []).map(String),
     }
-    return ok({ result })
+    return ok({ result, language })
   } catch (err) {
     if (err.status === 400) return badRequest(err.message)
     return serverError('Failed to run simulation', err.message)
