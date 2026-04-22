@@ -1,0 +1,77 @@
+name: Deploy backend to Yandex Cloud
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'infra/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: |
+      github.event_name == 'workflow_dispatch' || (
+        vars.YC_FOLDER_ID != '' &&
+        vars.YC_SA_ID != '' &&
+        vars.YC_FUNCTION_ID != ''
+      )
+    runs-on: ubuntu-latest
+    env:
+      YC_FOLDER_ID: ${{ vars.YC_FOLDER_ID }}
+      YC_SA_ID: ${{ vars.YC_SA_ID }}
+      YC_FUNCTION_ID: ${{ vars.YC_FUNCTION_ID }}
+      YANDEX_API: ${{ secrets.YANDEX_API }}
+      MODEL_YANDEX: ${{ vars.MODEL_YANDEX }}
+      S3_BUCKET: ${{ vars.S3_BUCKET }}
+      S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+      S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+      CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
+      MCP_ENABLED: ${{ vars.MCP_ENABLED }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yc CLI
+        run: |
+          curl -sSL https://storage.yandexcloud.net/yandexcloud-yc/install.sh | \
+            bash -s -- -i /tmp/yandex-cloud -n
+          echo "/tmp/yandex-cloud/bin" >> "$GITHUB_PATH"
+
+      - name: Authenticate yc with service-account key
+        env:
+          YC_SA_KEY_JSON: ${{ secrets.YC_SA_KEY_JSON }}
+        run: |
+          echo "$YC_SA_KEY_JSON" > /tmp/sa-key.json
+          yc config profile create gha
+          yc config set service-account-key /tmp/sa-key.json
+          yc config set folder-id "$YC_FOLDER_ID"
+
+      - name: Package backend
+        run: |
+          cd backend
+          mkdir -p .build
+          zip -qr .build/backend.zip package.json src -x "src/server.js"
+
+      - name: Deploy function version
+        run: |
+          yc serverless function version create \
+            --function-id "$YC_FUNCTION_ID" \
+            --runtime nodejs18 \
+            --entrypoint src/index.handler \
+            --memory 256m \
+            --execution-timeout 30s \
+            --service-account-id "$YC_SA_ID" \
+            --source-path backend/.build/backend.zip \
+            --environment "YANDEX_API=${YANDEX_API}" \
+            --environment "MODEL_YANDEX=${MODEL_YANDEX}" \
+            --environment "YANDEX_FOLDER_ID=${YC_FOLDER_ID}" \
+            --environment "S3_BUCKET=${S3_BUCKET}" \
+            --environment "S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}" \
+            --environment "S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}" \
+            --environment "CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}" \
+            --environment "MCP_ENABLED=${MCP_ENABLED:-false}"

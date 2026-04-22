@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { GenerationOutput, SimulationResult } from '../lib/types'
 import { exportJson, exportYaml } from '../lib/export'
+import { useI18n } from '../lib/i18n'
 
 interface Props {
   output: GenerationOutput | null
@@ -11,26 +12,33 @@ interface Props {
 type Tab = 'playbooks' | 'workflows' | 'sops' | 'org' | 'insights' | 'simulation'
 
 export function OutputViewer({ output, simulation, companyName }: Props) {
+  const { t } = useI18n()
   const [tab, setTab] = useState<Tab>('playbooks')
 
   if (!output && !simulation) {
     return (
       <div className="output">
-        <h2>AI Output</h2>
-        <div className="empty">
-          Define your company, then click <strong>Generate</strong> to produce playbooks, workflows,
-          SOPs, org structure, and optimization ideas.
-        </div>
+        <h2>{t.aiOutput}</h2>
+        <div className="empty">{t.emptyOutput}</div>
       </div>
     )
   }
 
   const base = companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'company'
 
+  const tabLabels: Record<Tab, string> = {
+    playbooks: t.tabPlaybooks,
+    workflows: t.tabWorkflows,
+    sops: t.tabSops,
+    org: t.tabOrg,
+    insights: t.tabInsights,
+    simulation: t.tabSimulation,
+  }
+
   return (
     <div className="output">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>AI Output</h2>
+        <h2>{t.aiOutput}</h2>
         <div style={{ display: 'flex', gap: 6 }}>
           <button
             className="btn"
@@ -50,13 +58,13 @@ export function OutputViewer({ output, simulation, companyName }: Props) {
       </div>
 
       <div className="tabs">
-        {(['playbooks', 'workflows', 'sops', 'org', 'insights', 'simulation'] as Tab[]).map((t) => (
+        {(Object.keys(tabLabels) as Tab[]).map((k) => (
           <div
-            key={t}
-            className={`tab ${tab === t ? 'active' : ''}`}
-            onClick={() => setTab(t)}
+            key={k}
+            className={`tab ${tab === k ? 'active' : ''}`}
+            onClick={() => setTab(k)}
           >
-            {t}
+            {tabLabels[k]}
           </div>
         ))}
       </div>
@@ -76,7 +84,7 @@ export function OutputViewer({ output, simulation, companyName }: Props) {
               </div>
             ))
           ) : (
-            <div className="empty">No playbooks yet.</div>
+            <div className="empty">{t.noPlaybooks}</div>
           )}
         </div>
       )}
@@ -88,9 +96,9 @@ export function OutputViewer({ output, simulation, companyName }: Props) {
               <div className="dept-card" key={i}>
                 <div className="dept-card-head">
                   <strong>{w.name}</strong>
-                  <span className="badge">owner: {w.owner}</span>
+                  <span className="badge">{t.owner}: {w.owner}</span>
                 </div>
-                <div className="note">Triggers: {w.triggers.join(', ') || '—'}</div>
+                <div className="note">{t.triggers}: {w.triggers.join(', ') || '—'}</div>
                 <ol style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13 }}>
                   {w.steps.map((s, j) => (
                     <li key={j}>
@@ -101,7 +109,7 @@ export function OutputViewer({ output, simulation, companyName }: Props) {
               </div>
             ))
           ) : (
-            <div className="empty">No workflows yet.</div>
+            <div className="empty">{t.noWorkflows}</div>
           )}
         </div>
       )}
@@ -115,14 +123,14 @@ export function OutputViewer({ output, simulation, companyName }: Props) {
                   <strong>{s.title}</strong>
                   <span className="badge">{s.department}</span>
                 </div>
-                <div className="note">Purpose: {s.purpose}</div>
+                <div className="note">{t.purpose}: {s.purpose}</div>
                 <ol style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13 }}>
                   {s.procedure.map((p, j) => <li key={j}>{p}</li>)}
                 </ol>
               </div>
             ))
           ) : (
-            <div className="empty">No SOPs yet.</div>
+            <div className="empty">{t.noSops}</div>
           )}
         </div>
       )}
@@ -132,28 +140,28 @@ export function OutputViewer({ output, simulation, companyName }: Props) {
           {output?.orgStructure?.length ? (
             <pre>{JSON.stringify(output.orgStructure, null, 2)}</pre>
           ) : (
-            <div className="empty">No org structure yet.</div>
+            <div className="empty">{t.noOrg}</div>
           )}
         </div>
       )}
 
       {tab === 'insights' && (
         <div>
-          <h3>Bottlenecks</h3>
+          <h3>{t.bottlenecks}</h3>
           {output?.bottlenecks?.length ? (
             <ul style={{ paddingLeft: 18, fontSize: 13 }}>
               {output.bottlenecks.map((b, i) => <li key={i}>{b}</li>)}
             </ul>
           ) : (
-            <div className="empty">None identified.</div>
+            <div className="empty">{t.noBottlenecks}</div>
           )}
-          <h3>Optimization ideas</h3>
+          <h3>{t.optimizations}</h3>
           {output?.optimizations?.length ? (
             <ul style={{ paddingLeft: 18, fontSize: 13 }}>
               {output.optimizations.map((o, i) => <li key={i}>{o}</li>)}
             </ul>
           ) : (
-            <div className="empty">None yet.</div>
+            <div className="empty">{t.noOptimizations}</div>
           )}
         </div>
       )}
@@ -163,23 +171,23 @@ export function OutputViewer({ output, simulation, companyName }: Props) {
           {simulation ? (
             <div className="dept-card">
               <div className="dept-card-head">
-                <strong>Scenario</strong>
+                <strong>{t.scenario}</strong>
               </div>
               <div className="note">{simulation.scenario}</div>
-              <h3>Impacts</h3>
+              <h3>{t.impacts}</h3>
               {simulation.impacts.map((im, i) => (
                 <div key={i} style={{ fontSize: 13, marginBottom: 6 }}>
                   <span className="pill">{im.severity}</span>
                   <strong>{im.area}:</strong> {im.effect}
                 </div>
               ))}
-              <h3>Recommendations</h3>
+              <h3>{t.recommendations}</h3>
               <ul style={{ paddingLeft: 18, fontSize: 13 }}>
                 {simulation.recommendations.map((r, i) => <li key={i}>{r}</li>)}
               </ul>
             </div>
           ) : (
-            <div className="empty">Run a simulation from the left panel.</div>
+            <div className="empty">{t.runSimFromLeft}</div>
           )}
         </div>
       )}

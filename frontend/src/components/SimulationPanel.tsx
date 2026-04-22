@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useI18n } from '../lib/i18n'
 
 interface Props {
   disabled: boolean
@@ -6,29 +7,23 @@ interface Props {
   running: boolean
 }
 
-const EXAMPLES = [
-  'Lose our top sales rep next month',
-  'Marketing budget cut by 40% for Q2',
-  'Support team grows 3x in 6 months',
-  'Launch a new enterprise tier',
-]
-
 export function SimulationPanel({ disabled, onRun, running }: Props) {
+  const { t } = useI18n()
   const [scenario, setScenario] = useState('')
 
   return (
     <div style={{ marginTop: 24 }}>
-      <h2>Simulation</h2>
+      <h2>{t.simulation}</h2>
       <div className="field">
-        <label>What happens if…</label>
+        <label>{t.whatIfLabel}</label>
         <textarea
-          placeholder="Describe a scenario, e.g. 'We lose our top sales rep next month'"
+          placeholder={t.whatIfPlaceholder}
           value={scenario}
           onChange={(e) => setScenario(e.target.value)}
         />
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-        {EXAMPLES.map((ex) => (
+        {t.examples.map((ex) => (
           <span
             key={ex}
             className="pill"
@@ -44,9 +39,9 @@ export function SimulationPanel({ disabled, onRun, running }: Props) {
         disabled={disabled || running || !scenario.trim()}
         onClick={() => onRun(scenario.trim())}
       >
-        {running ? 'Simulating…' : 'Run simulation'}
+        {running ? t.simulating : t.runSimulation}
       </button>
-      {disabled && <div className="note">Create a company first.</div>}
+      {disabled && <div className="note">{t.createCompanyFirst}</div>}
     </div>
   )
 }

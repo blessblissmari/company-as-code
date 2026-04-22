@@ -5,22 +5,28 @@ const { getCompany, saveOutput } = require('../lib/storage')
 const { completeJson } = require('../lib/yandexgpt')
 const { buildGeneratePrompt } = require('../lib/prompts')
 const { maybeAttachMcpDescriptors } = require('../lib/mcp-adapter')
+const { normalizeLanguage } = require('../lib/i18n')
 
 async function handler(event) {
   if (event?.httpMethod === 'OPTIONS') return preflight()
   try {
     const body = parseBody(event)
     const id = body.companyId
-    if (!id) return badRequest('companyId is required')
-    const company = getCompany(id)
-    if (!company) return notFound(`No company with id ${id}`)
+    const language = normalizeLanguage(body.language)
+    // Accept either a stored companyId OR an inline company object. The latter
+    // is what the frontend uses because Yandex Cloud Functions are stateless
+    // and cold-start containers don't share the in-memory store.
+    const company = body.company || (id ? await getCompany(id) : null)
+    if (!company) {
+      return id ? notFound(`No company with id ${id}`) : badRequest('company or companyId is required')
+    }
 
-    const prompt = buildGeneratePrompt(company)
+    const prompt = buildGeneratePrompt(company, { language })
     const raw = await completeJson({ ...prompt, temperature: 0.4, maxTokens: 3000 })
     const output = normalizeGenerationOutput(raw)
     const enriched = maybeAttachMcpDescriptors(output)
-    saveOutput(id, enriched)
-    return ok({ output: enriched })
+    if (company.id) await saveOutput(company.id, enriched)
+    return ok({ output: enriched, language })
   } catch (err) {
     if (err.status === 400) return badRequest(err.message)
     return serverError('Failed to generate company design', err.message)

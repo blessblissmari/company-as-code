@@ -4,6 +4,7 @@ import type {
   GenerationOutput,
   SimulationResult,
 } from './types'
+import type { Language } from './i18n'
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
 
@@ -28,15 +29,26 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(input),
     }),
-  generate: (companyId: string) =>
-    request<{ output: GenerationOutput }>('/company/generate', {
+  generate: (company: Company, language: Language) =>
+    request<{ output: GenerationOutput; language: Language }>('/company/generate', {
       method: 'POST',
-      body: JSON.stringify({ companyId }),
+      body: JSON.stringify({ companyId: company.id, company, language }),
     }),
-  simulate: (companyId: string, scenario: string) =>
-    request<{ result: SimulationResult }>('/company/simulate', {
+  simulate: (
+    company: Company,
+    scenario: string,
+    language: Language,
+    previousOutput?: GenerationOutput | null,
+  ) =>
+    request<{ result: SimulationResult; language: Language }>('/company/simulate', {
       method: 'POST',
-      body: JSON.stringify({ companyId, scenario }),
+      body: JSON.stringify({
+        companyId: company.id,
+        company,
+        scenario,
+        language,
+        previousOutput: previousOutput ?? undefined,
+      }),
     }),
   getCompany: (id: string) => request<{ company: Company; output?: GenerationOutput }>(`/company/${id}`),
 }

@@ -9,19 +9,13 @@ info:
   title: Company-as-Code API
   version: 0.1.0
   description: |
-    MVP API for the Company-as-Code app. Routes each operation to a separate
-    Yandex Cloud Function for independent cold-start tuning and scaling.
-
-x-yc-apigateway:
-  cors:
-    origin: "*"
-    methods:
-      - GET
-      - POST
-      - OPTIONS
-    headers:
-      - Content-Type
-      - Authorization
+    MVP API for the Company-as-Code app. Routes each operation to Yandex Cloud
+    Functions. CORS is handled per-response in the function itself (see
+    `backend/src/lib/response.js`) so the `CORS_ALLOWED_ORIGINS` env var can
+    control the allowlist without redeploying the gateway.
+    For the production deployment we use a single dispatcher function (same
+    id for every route) because the default folder-quota caps functions at
+    10. Swap in per-route function ids once you request a quota bump.
 
 paths:
   /company/create:
@@ -110,6 +104,16 @@ paths:
       responses:
         '200': { description: OK }
         '404': { description: Not Found }
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID_GET>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+    options:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
       x-yc-apigateway-integration:
         type: cloud_functions
         function_id: <FUNCTION_ID_GET>
