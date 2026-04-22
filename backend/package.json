@@ -1,0 +1,24 @@
+{
+  "name": "@company-as-code/backend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Yandex Cloud Functions backend for Company-as-Code",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node src/server.js",
+    "start": "node src/server.js",
+    "build": "node scripts/build.js",
+    "lint": "eslint src --max-warnings=0",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
