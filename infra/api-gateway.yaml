@@ -1,0 +1,146 @@
+# Yandex API Gateway OpenAPI spec for Company-as-Code.
+#
+# Deploy with: yc serverless api-gateway create --spec=infra/api-gateway.yaml ...
+# Replace <FUNCTION_ID_*> and <SERVICE_ACCOUNT_ID> placeholders before applying.
+#
+# Docs: https://cloud.yandex.com/en/docs/api-gateway/quickstart/
+openapi: 3.0.0
+info:
+  title: Company-as-Code API
+  version: 0.1.0
+  description: |
+    MVP API for the Company-as-Code app. Routes each operation to a separate
+    Yandex Cloud Function for independent cold-start tuning and scaling.
+
+x-yc-apigateway:
+  cors:
+    origin: "*"
+    methods:
+      - GET
+      - POST
+      - OPTIONS
+    headers:
+      - Content-Type
+      - Authorization
+
+paths:
+  /company/create:
+    post:
+      operationId: companyCreate
+      summary: Create a company definition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyInput'
+      responses:
+        '201': { description: Created }
+        '400': { description: Bad Request }
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID_CREATE>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+    options:
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID_CREATE>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+
+  /company/generate:
+    post:
+      operationId: companyGenerate
+      summary: Generate AI-designed playbooks/workflows/SOPs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [companyId]
+              properties:
+                companyId: { type: string }
+      responses:
+        '200': { description: OK }
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID_GENERATE>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+    options:
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID_GENERATE>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+
+  /company/simulate:
+    post:
+      operationId: companySimulate
+      summary: Run a what-if simulation against a company
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [companyId, scenario]
+              properties:
+                companyId: { type: string }
+                scenario: { type: string }
+      responses:
+        '200': { description: OK }
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID_SIMULATE>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+    options:
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID_SIMULATE>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+
+  /company/{id}:
+    get:
+      operationId: companyGet
+      summary: Fetch a company + its latest generated output
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID_GET>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+
+components:
+  schemas:
+    CompanyInput:
+      type: object
+      required: [name, industry, size, goals, strategyStyle, departments]
+      properties:
+        name: { type: string }
+        industry: { type: string }
+        size: { type: string }
+        goals: { type: string }
+        strategyStyle:
+          type: string
+          enum:
+            - aggressive-growth
+            - lean-efficiency
+            - customer-obsessed
+            - product-led
+            - enterprise-sales
+        departments:
+          type: array
+          items:
+            type: object
+            required: [name, type, roles]
+            properties:
+              name: { type: string }
+              type: { type: string, enum: [sales, marketing, support, custom] }
+              roles:
+                type: array
+                items: { type: string }
