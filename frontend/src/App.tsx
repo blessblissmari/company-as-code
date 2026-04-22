@@ -6,6 +6,7 @@ import { SimulationPanel } from './components/SimulationPanel'
 import { api } from './lib/api'
 import { exportJson, exportYaml } from './lib/export'
 import {
+  Company,
   CompanyInput,
   GenerationOutput,
   SimulationResult,
@@ -31,7 +32,7 @@ const defaultCompany: CompanyInput = {
 
 export default function App() {
   const [company, setCompany] = useState<CompanyInput>(defaultCompany)
-  const [companyId, setCompanyId] = useState<string | null>(null)
+  const [created, setCreated] = useState<Company | null>(null)
   const [output, setOutput] = useState<GenerationOutput | null>(null)
   const [simulation, setSimulation] = useState<SimulationResult | null>(null)
   const [status, setStatus] = useState<'idle' | 'creating' | 'generating' | 'simulating'>('idle')
@@ -41,10 +42,10 @@ export default function App() {
     setError(null)
     try {
       setStatus('creating')
-      const { company: created } = await api.createCompany(company)
-      setCompanyId(created.id)
+      const { company: newCompany } = await api.createCompany(company)
+      setCreated(newCompany)
       setStatus('generating')
-      const { output: gen } = await api.generate(created.id)
+      const { output: gen } = await api.generate(newCompany)
       setOutput(gen)
       setSimulation(null)
     } catch (e) {
@@ -55,11 +56,11 @@ export default function App() {
   }
 
   const runSimulate = async (scenario: string) => {
-    if (!companyId) return
+    if (!created) return
     setError(null)
     try {
       setStatus('simulating')
-      const { result } = await api.simulate(companyId, scenario)
+      const { result } = await api.simulate(created, scenario, output)
       setSimulation(result)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -108,7 +109,7 @@ export default function App() {
           {error && <div className="err">{error}</div>}
           <CompanyBuilder value={company} onChange={setCompany} />
           <SimulationPanel
-            disabled={!companyId}
+            disabled={!created}
             running={status === 'simulating'}
             onRun={runSimulate}
           />

@@ -11,15 +11,19 @@ async function handler(event) {
   try {
     const body = parseBody(event)
     const id = body.companyId
-    if (!id) return badRequest('companyId is required')
-    const company = getCompany(id)
-    if (!company) return notFound(`No company with id ${id}`)
+    // Accept either a stored companyId OR an inline company object. The latter
+    // is what the frontend uses because Yandex Cloud Functions are stateless
+    // and cold-start containers don't share the in-memory store.
+    let company = body.company || (id ? getCompany(id) : null)
+    if (!company) {
+      return id ? notFound(`No company with id ${id}`) : badRequest('company or companyId is required')
+    }
 
     const prompt = buildGeneratePrompt(company)
     const raw = await completeJson({ ...prompt, temperature: 0.4, maxTokens: 3000 })
     const output = normalizeGenerationOutput(raw)
     const enriched = maybeAttachMcpDescriptors(output)
-    saveOutput(id, enriched)
+    if (company.id) saveOutput(company.id, enriched)
     return ok({ output: enriched })
   } catch (err) {
     if (err.status === 400) return badRequest(err.message)

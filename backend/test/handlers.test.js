@@ -72,6 +72,27 @@ test('POST /company/create validates input', async () => {
   assert.ok(Array.isArray(body.details))
 })
 
+test('generate handler accepts inline company without companyId', async () => {
+  const generateMod = require('../src/handlers/generate')
+  const origFetch = require('../src/lib/yandexgpt').completeJson
+  // Spec sanity check only — we don't actually call YandexGPT from tests.
+  // The handler should 500 cleanly when the key is missing, not 400.
+  const res = await generateMod.handler(
+    evt('POST', '/company/generate', {
+      company: {
+        name: 'X',
+        industry: 'SaaS',
+        size: '10',
+        goals: 'Grow',
+        strategyStyle: 'product-led',
+        departments: [{ name: 'Sales', type: 'sales', roles: ['AE'] }],
+      },
+    }),
+  )
+  assert.ok(res.statusCode === 500 || res.statusCode === 200)
+  void origFetch
+})
+
 test('GET /company/:id round-trips', async () => {
   const create = await createMod.handler(
     evt('POST', '/company/create', {

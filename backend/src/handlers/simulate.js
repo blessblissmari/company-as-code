@@ -13,13 +13,14 @@ async function handler(event) {
     const body = parseBody(event)
     const id = body.companyId
     const scenario = String(body.scenario || '').trim()
-    if (!id) return badRequest('companyId is required')
     if (!scenario) return badRequest('scenario is required')
 
-    const company = getCompany(id)
-    if (!company) return notFound(`No company with id ${id}`)
+    const company = body.company || (id ? getCompany(id) : null)
+    if (!company) {
+      return id ? notFound(`No company with id ${id}`) : badRequest('company or companyId is required')
+    }
 
-    const previousOutput = getOutput(id)
+    const previousOutput = body.previousOutput || (company.id ? getOutput(company.id) : null)
     const prompt = buildSimulatePrompt(company, scenario, previousOutput)
     const raw = await completeJson({ ...prompt, temperature: 0.5, maxTokens: 1500 })
 

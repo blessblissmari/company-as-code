@@ -28,15 +28,20 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(input),
     }),
-  generate: (companyId: string) =>
+  generate: (company: Company) =>
     request<{ output: GenerationOutput }>('/company/generate', {
       method: 'POST',
-      body: JSON.stringify({ companyId }),
+      body: JSON.stringify({ companyId: company.id, company }),
     }),
-  simulate: (companyId: string, scenario: string) =>
+  simulate: (company: Company, scenario: string, previousOutput?: GenerationOutput | null) =>
     request<{ result: SimulationResult }>('/company/simulate', {
       method: 'POST',
-      body: JSON.stringify({ companyId, scenario }),
+      body: JSON.stringify({
+        companyId: company.id,
+        company,
+        scenario,
+        previousOutput: previousOutput ?? undefined,
+      }),
     }),
   getCompany: (id: string) => request<{ company: Company; output?: GenerationOutput }>(`/company/${id}`),
 }
